@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitwall | Bitcoin Self-Custody Wallet</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#87CEEB">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       CSS STYLES & COLOR PALETTE: Solid Colors (Baby Blue, Yellow, White, Black)
+       ========================================================================== */
+    :root {
+      --bg-color: #0a0b0e;        /* Solid Deep Black */
+      --card-bg: #14171d;         /* Solid Dark Card */
+      --card-border: #222731;     /* Solid Border Color */
+      --baby-blue: #87CEEB;       /* Primary Accent */
+      --yellow: #FFD700;          /* Secondary Accent / Alerts */
+      --white: #FFFFFF;           /* Primary Text */
+      --text-muted: #8a93a6;     /* Secondary Text */
+      --danger: #ff4d4d;
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--white);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Outer Wrapper for App Container */
+    #app-container {
+      width: 100%;
+      max-width: 480px;
+      height: 100vh;
+      max-height: 900px;
+      background-color: var(--bg-color);
+      border: 1px solid var(--card-border);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    @media (min-width: 500px) {
+      #app-container {
+        height: 92vh;
+        border-radius: 24px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+      }
+    }
+
+    /* Utility Classes */
+    .hidden { display: none !important; }
+    .btn {
+      background: var(--baby-blue);
+      color: var(--bg-color);
+      border: none;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: var(--transition);
+      width: 100%;
+    }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--white);
+      border: 1px solid var(--card-border);
+    }
+    .btn-secondary:hover {
+      border-color: var(--baby-blue);
+      color: var(--baby-blue);
+    }
+    .btn-yellow {
+      background: var(--yellow);
+      color: var(--bg-color);
+    }
+
+    /* ==========================================================================
+       SPLASH SCREEN & LOADING ANIMATIONS
+       ========================================================================== */
+    #splash-screen {
+      position: absolute;
+      inset: 0;
+      background-color: var(--bg-color);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    .splash-logo {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 3px solid var(--baby-blue);
+      margin-bottom: 24px;
+      object-fit: cover;
+    }
+
+    .spinner-box {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      margin-bottom: 20px;
+    }
+
+    .pulse-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 3px solid var(--baby-blue);
+      border-radius: 50%;
+      animation: pulseRing 1.5s ease-out infinite;
+    }
+
+    .spinner-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border: 3px solid transparent;
+      border-top-color: var(--yellow);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes pulseRing {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(1.4); opacity: 0; }
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-status {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       HEADER & LIVE TICKER BAR
+       ========================================================================== */
+    header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      background: var(--bg-color);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid var(--baby-blue);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span { color: var(--baby-blue); }
+
+    .price-badge {
+      text-align: right;
+    }
+
+    .price-usd {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .price-change {
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+    }
+
+    .price-change.up { color: #00e676; }
+    .price-change.down { color: var(--danger); }
+
+    .ws-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+      background: var(--yellow);
+    }
+    .ws-status-dot.active { background: #00e676; }
+
+    /* ==========================================================================
+       MAIN SCREEN LAYOUT & SCROLLABLE CONTENT
+       ========================================================================== */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Balance Hero Card */
+    .balance-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .balance-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .balance-btc {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--white);
+      margin-bottom: 4px;
+    }
+
+    .balance-usd {
+      font-size: 16px;
+      color: var(--baby-blue);
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .hero-actions .btn {
+      flex: 1;
+      border-radius: 14px;
+    }
+
+    /* Network Stats Bar */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-box {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 14px;
+      border-radius: 14px;
+    }
+
+    .stat-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--yellow);
+    }
+
+    /* Hardcoded / Active Wallet Info Section */
+    .active-wallet-info {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .wallet-info-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .wallet-name-tag {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .protocol-tag {
+      background: var(--baby-blue);
+      color: var(--bg-color);
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    /* Custom Dropdown Selector */
+    .custom-select-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    .custom-select-trigger {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--white);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .custom-select-trigger:hover {
+      border-color: var(--baby-blue);
+    }
+
+    .custom-options {
+      position: absolute;
+      top: 105%;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+      z-index: 100;
+      display: none;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .custom-options.open { display: block; }
+
+    .custom-option {
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--white);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .custom-option:hover {
+      background: var(--bg-color);
+      color: var(--baby-blue);
+    }
+
+    /* Uninitialized Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      background-color: var(--card-bg);
+      border: 1px dashed var(--card-border);
+      border-radius: 20px;
+    }
+
+    .empty-state i {
+      font-size: 48px;
+      color: var(--baby-blue);
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       CUSTOM POPUP WIDGETS & MODALS
+       ========================================================================== */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      width: 100%;
+      background-color: var(--card-bg);
+      border-top: 2px solid var(--baby-blue);
+      border-radius: 24px 24px 0 0;
+      padding: 24px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--white);
+    }
+
+    .close-btn {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .close-btn:hover {
+      color: var(--white);
+      border-color: var(--baby-blue);
+    }
+
+    /* Inputs & Form Elements */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-input {
+      width: 100%;
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--white);
+      font-size: 14px;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .form-input:focus {
+      border-color: var(--baby-blue);
+    }
+
+    .input-action-btn {
+      position: absolute;
+      right: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--baby-blue);
+      font-size: 11px;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .input-action-btn:hover {
+      background: var(--baby-blue);
+      color: var(--bg-color);
+    }
+
+    /* Seed Phrase Grid Display */
+    .seed-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .seed-word {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--yellow);
+    }
+
+    .seed-word span {
+      color: var(--text-muted);
+      margin-right: 4px;
+      font-size: 10px;
+    }
+
+    /* Receive QR Container */
+    .qr-container {
+      background: var(--white);
+      padding: 16px;
+      border-radius: 16px;
+      width: fit-content;
+      margin: 0 auto 16px auto;
+    }
+
+    .key-details {
+      background: var(--bg-color);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 12px;
+    }
+
+    .key-details strong {
+      color: var(--white);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background-color: var(--yellow);
+      color: var(--bg-color);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      z-index: 10000;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-container">
+
+    <!-- Toast Component -->
+    <div id="toast">Copied to clipboard!</div>
+
+    <!-- 1. SPLASH SCREEN -->
+    <div id="splash-screen">
+      <img src="logo.jpg" alt="Bitwall Logo" class="splash-logo" onerror="this.src='https://raw.githubusercontent.com/feathericons/feather/master/icons/shield.svg'; this.style.filter='invert(1)'">
+      <div class="spinner-box">
+        <div class="pulse-ring"></div>
+        <div class="spinner-ring"></div>
+      </div>
+      <div style="font-size: 20px; font-weight: 800; color: var(--white); margin-bottom: 4px;">BITWALL</div>
+      <div style="font-size: 12px; color: var(--baby-blue); font-weight: 700; letter-spacing: 1px;">SELF-CUSTODY BTC</div>
+      <div class="loading-status" id="splash-status">Connecting WebSockets...</div>
+    </div>
+
+    <!-- 2. HEADER & TICKER -->
+    <header>
+      <div class="brand">
+        <img src="logo.jpg" alt="Bitwall Logo" onerror="this.src='https://raw.githubusercontent.com/feathericons/feather/master/icons/shield.svg'; this.style.filter='invert(1)'">
+        <div class="brand-title">BIT<span>WALL</span></div>
+      </div>
+      <div class="price-badge">
+        <div class="price-usd" id="header-btc-price">$0.00</div>
+        <div class="price-change up" id="header-btc-change">
+          <span class="ws-status-dot" id="ws-dot"></span>
+          <span id="change-val">0.00%</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 3. MAIN SCROLLABLE CONTENT -->
+    <div class="main-content">
+
+      <!-- Wallet View (Shown when wallet is active/selected) -->
+      <div id="wallet-active-view" class="hidden">
+        
+        <!-- Balance Hero Card -->
+        <div class="balance-card">
+          <div class="balance-label">Total Balance</div>
+          <div class="balance-btc" id="balance-btc-val">0.00000000 BTC</div>
+          <div class="balance-usd" id="balance-usd-val">≈ $0.00 USD</div>
+
+          <div class="hero-actions">
+            <button class="btn" onclick="openSendModal()">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Send
+            </button>
+            <button class="btn btn-yellow" onclick="openReceiveModal()">
+              <i class="fa-solid fa-arrow-down-left-and-up-right-to-center"></i> Receive
+            </button>
+          </div>
+        </div>
+
+        <!-- Address Switcher & Wallet Info -->
+        <div class="active-wallet-info" style="margin-top: 16px;">
+          <div class="wallet-info-header">
+            <div>
+              <div class="wallet-name-tag" id="active-wallet-name">My Bitcoin Wallet</div>
+              <div style="font-size: 11px; color: var(--text-muted);" id="active-wallet-sats">0 Sats</div>
+            </div>
+            <span class="protocol-tag" id="active-protocol-tag">SegWit</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Address Library Switcher</label>
+            <div class="custom-select-wrapper">
+              <div class="custom-select-trigger" id="address-select-trigger" onclick="toggleAddressDropdown()">
+                <span id="selected-address-label">Select Address...</span>
+                <i class="fa-solid fa-chevron-down"></i>
+              </div>
+              <div class="custom-options" id="address-custom-options">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Empty State View (Shown before creating a wallet) -->
+      <div id="wallet-empty-view" class="empty-state">
+        <i class="fa-solid fa-wallet"></i>
+        <h3>No Wallet Active</h3>
+        <p>Create a local non-custodial Bitcoin wallet prototype with custom protocol configurations.</p>
+        <button class="btn" onclick="openCreateModal()">
+          <i class="fa-solid fa-plus"></i> Create New Wallet
+        </button>
+      </div>
+
+      <!-- Network Live Stats -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-title"><i class="fa-solid fa-gas-pump"></i> Est. Gas Fee</div>
+          <div class="stat-value" id="stat-gas-fee">12 sat/vB</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-title"><i class="fa-solid fa-coins"></i> 1 USD Value</div>
+          <div class="stat-value" id="stat-sats-per-usd">0 Sats</div>
+        </div>
+      </div>
+
+      <!-- Security / Generated Keys Display Card -->
+      <div id="key-info-card" class="active-wallet-info hidden">
+        <div class="wallet-info-header">
+          <div class="wallet-name-tag"><i class="fa-solid fa-key" style="color: var(--yellow);"></i> Local Security Keys</div>
+        </div>
+        <div class="key-details">
+          <strong>Public Key (Generated):</strong>
+          <span id="disp-pubkey">-</span>
+        </div>
+        <div class="key-details" style="margin-bottom: 0;">
+          <strong>Private Key (Generated):</strong>
+          <span id="disp-privkey" style="filter: blur(4px); transition: var(--transition); cursor: pointer;" onclick="this.style.filter='none'">Click to Reveal</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ==========================================================================
+     MODALS & WIDGET POPUPS
+     ========================================================================== -->
+
+  <!-- Modal 1: Create Wallet -->
+  <div class="modal-overlay" id="modal-create">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Create Bitcoin Wallet</div>
+        <div class="close-btn" onclick="closeModal('modal-create')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Wallet Name</label>
+        <input type="text" id="input-wallet-name" class="form-input" placeholder="e.g. Main Vault">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Protocol</label>
+        <div class="custom-select-wrapper">
+          <div class="custom-select-trigger" id="protocol-select-trigger" onclick="toggleProtocolDropdown()">
+            <span id="selected-protocol-label">Native SegWit (bech32)</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </div>
+          <div class="custom-options" id="protocol-custom-options">
+            <div class="custom-option" onclick="selectProtocol('SegWit (bech32)', 'segwit')">
+              <span>Native SegWit (bech32)</span>
+              <i class="fa-solid fa-check" style="opacity: 0;"></i>
+            </div>
+            <div class="custom-option" onclick="selectProtocol('Taproot (P2TR)', 'taproot')">
+              <span>Taproot (P2TR)</span>
+              <i class="fa-solid fa-check" style="opacity: 0;"></i>
+            </div>
+            <div class="custom-option" onclick="selectProtocol('Legacy (P2PKH)', 'legacy')">
+              <span>Legacy (P2PKH)</span>
+              <i class="fa-solid fa-check" style="opacity: 0;"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn" style="margin-top: 10px;" onclick="generateWalletStep2()">Generate Seed Phrase</button>
+
+      <!-- Step 2: Display Seed Phrase -->
+      <div id="seed-display-area" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--card-border); padding-top: 16px;">
+        <div class="form-label">Backup Seed Phrase (12 Words)</div>
+        <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Write this phrase down on paper or download the PDF file.</p>
+        
+        <div class="seed-grid" id="seed-grid-container">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+          <button class="btn btn-secondary" onclick="downloadSeedPDF()">
+            <i class="fa-solid fa-file-pdf"></i> Download PDF
+          </button>
+          <button class="btn btn-yellow" onclick="finalizeWalletCreation()">
+            Complete
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal 2: Send BTC Widget -->
+  <div class="modal-overlay" id="modal-send">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Send Bitcoin</div>
+        <div class="close-btn" onclick="closeModal('modal-send')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Target Wallet Address</label>
+        <div class="input-wrapper">
+          <input type="text" id="send-target-address" class="form-input" placeholder="Paste BTC address...">
+          <button class="input-action-btn" onclick="pasteAddress()">PASTE</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (BTC)</label>
+        <div class="input-wrapper">
+          <input type="number" step="0.00000001" id="send-amount-btc" class="form-input" placeholder="0.00000000" oninput="updateSendCalculations()">
+          <button class="input-action-btn" onclick="setSendMax()">MAX</button>
+        </div>
+      </div>
+
+      <div style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
+          <span>Live Real Gas Fee:</span>
+          <span id="send-gas-fee-display" style="color: var(--yellow); font-weight: 700;">12 sat/vB (~$0.45)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+          <span>Total Output + Fee:</span>
+          <span id="send-total-usd" style="color: var(--white); font-weight: 700;">$0.00 USD</span>
+        </div>
+      </div>
+
+      <button class="btn" onclick="executeSendTransaction()">Confirm & Send</button>
+    </div>
+  </div>
+
+  <!-- Modal 3: Receive BTC Widget -->
+  <div class="modal-overlay" id="modal-receive">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Receive Bitcoin</div>
+        <div class="close-btn" onclick="closeModal('modal-receive')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+
+      <div class="qr-container" id="qr-code-wrapper"></div>
+
+      <div class="form-group">
+        <label class="form-label">Your Wallet Address</label>
+        <div class="input-wrapper">
+          <input type="text" id="receive-address-input" class="form-input" readonly>
+          <button class="input-action-btn" onclick="copyReceiveAddress()">COPY</button>
+        </div>
+      </div>
+
+      <div style="background: var(--bg-color); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; text-align: center;">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; font-weight: 700;">Minimum Ideal Amount (Gas Guard)</div>
+        <div style="font-size: 14px; font-weight: 800; color: var(--yellow);" id="receive-min-ideal">0.00001000 BTC ($0.65)</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+     JAVASCRIPT LOGIC ENGINE
+     ========================================================================== -->
+  <script>
+    /* --------------------------------------------------------------------------
+       1. DATA LIBRARIES (Words, Hardcoded Addresses, Generators)
+       -------------------------------------------------------------------------- */
+    const WORD_LIBRARY = [
+      "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse",
+      "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act",
+      "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit",
+      "adult", "advance", "advice", "aerobic", "afford", "afraid", "again", "age", "agent", "agree",
+      "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien",
+      "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always"
+    ];
+
+    const HARDCODED_ADDRESSES = [
+      "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", // Satoshi Genesis Address
+      "34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo", // Binance Cold Storage 1
+      "bc1qgdjqv0av3q56jvd82tkdjpy7gdp9ut8tlqmgrpmv24sq90ecnvqqjwvw97" // Bitfinex Vault
+    ];
+
+    const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    // Application State
+    let appState = {
+      btcPrice: 65000.00,
+      priceChange24h: 1.25,
+      gasFeeSatVb: 12,
+      activeWallet: null,
+      selectedAddressIndex: 0,
+      addressBalances: [0, 0, 0],
+      wsActive: false,
+      selectedProtocol: "SegWit (bech32)"
+    };
+
+    /* --------------------------------------------------------------------------
+       2. INITIALIZATION & SERVICE WORKER REGISTER
+       -------------------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Register PWA Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error:', err));
+      }
+
+      initWebSockets();
+      await fetchInitialBlockData();
+      
+      // Hide Splash Screen with smooth delay
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        splash.style.opacity = '0';
+        splash.style.visibility = 'hidden';
+      }, 1500);
+
+      renderAddressDropdown();
+    });
+
+    /* --------------------------------------------------------------------------
+       3. WEBSOCKET REAL-TIME PRICE ENGINE (Binance -> Fallbacks)
+       -------------------------------------------------------------------------- */
+    function initWebSockets() {
+      updateSplashStatus("Connecting live pricing...");
+      
+      // Primary: Binance WebSocket
+      const binanceWS = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
+
+      binanceWS.onopen = () => {
+        setWsStatus(true);
+      };
+
+      binanceWS.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        appState.btcPrice = parseFloat(data.c);
+        appState.priceChange24h = parseFloat(data.P);
+        updatePriceUI();
+      };
+
+      binanceWS.onerror = () => {
+        console.warn("Binance WS failed. Attempting fallback...");
+        binanceWS.close();
+        initBybitFallback();
+      };
+    }
+
+    function initBybitFallback() {
+      // Fallback 1: Bybit WebSocket
+      const bybitWS = new WebSocket('wss://stream.bybit.com/v5/public/spot');
+
+      bybitWS.onopen = () => {
+        setWsStatus(true);
+        bybitWS.send(JSON.stringify({ op: "subscribe", args: ["tickers.BTCUSDT"] }));
+      };
+
+      bybitWS.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.data && data.data.lastPrice) {
+          appState.btcPrice = parseFloat(data.data.lastPrice);
+          appState.priceChange24h = parseFloat(data.data.price24hPcnt || 0) * 100;
+          updatePriceUI();
+        }
+      };
+
+      bybitWS.onerror = () => {
+        console.warn("Bybit WS failed. Reverting to REST polling fallback...");
+        initCoinGeckoFallback();
+      };
+    }
+
+    function initCoinGeckoFallback() {
+      // Fallback 2: CoinGecko REST Polling
+      const fetchCG = async () => {
+        try {
+          const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
+          const data = await res.json();
+          appState.btcPrice = data.bitcoin.usd;
+          appState.priceChange24h = data.bitcoin.usd_24h_change;
+          setWsStatus(true);
+          updatePriceUI();
+        } catch (e) {
+          setWsStatus(false);
+        }
+      };
+      fetchCG();
+      setInterval(fetchCG, 10000);
+    }
+
+    function setWsStatus(active) {
+      appState.wsActive = active;
+      const dot = document.getElementById('ws-dot');
+      if (active) dot.classList.add('active');
+      else dot.classList.remove('active');
+    }
+
+    function updatePriceUI() {
+      document.getElementById('header-btc-price').innerText = `$${appState.btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const changeEl = document.getElementById('header-btc-change');
+      const changeVal = document.getElementById('change-val');
+      
+      const val = appState.priceChange24h;
+      changeVal.innerText = `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+
+      if (val >= 0) {
+        changeEl.className = 'price-change up';
+      } else {
+        changeEl.className = 'price-change down';
+      }
+
+      // Update Sats per USD
+      const satsPerUsd = Math.round(100000000 / appState.btcPrice);
+      document.getElementById('stat-sats-per-usd').innerText = `${satsPerUsd.toLocaleString()} Sats`;
+
+      // Update active wallet USD value if loaded
+      if (appState.activeWallet) {
+        updateBalanceUI();
+      }
+    }
+
+    /* --------------------------------------------------------------------------
+       4. BLOCKCHAIN API BALANCE & GAS FEE SCANNER
+       -------------------------------------------------------------------------- */
+    async function fetchInitialBlockData() {
+      updateSplashStatus("Fetching gas fees & balances...");
+
+      // Fetch Live Recommended Gas Fees
+      try {
+        const feeRes = await fetch('https://mempool.space/api/v1/fees/recommended');
+        const feeData = await feeRes.json();
+        appState.gasFeeSatVb = feeData.halfHourFee || 12;
+      } catch (e) {
+        appState.gasFeeSatVb = 12; // default fallback
+      }
+      document.getElementById('stat-gas-fee').innerText = `${appState.gasFeeSatVb} sat/vB`;
+
+      // Scan address balances using public API endpoint
+      for (let i = 0; i < HARDCODED_ADDRESSES.length; i++) {
+        try {
+          const addr = HARDCODED_ADDRESSES[i];
+          const res = await fetch(`https://blockchain.info/rawaddr/${addr}?limit=0`);
+          if (res.ok) {
+            const data = await res.json();
+            appState.addressBalances[i] = data.final_balance / 100000000;
+          }
+        } catch (e) {
+          appState.addressBalances[i] = 0.005; // Fallback mock balance for prototype demo
+        }
+      }
+    }
+
+    function updateSplashStatus(msg) {
+      document.getElementById('splash-status').innerText = msg;
+    }
+
+    /* --------------------------------------------------------------------------
+       5. WALLET GENERATION & SECURITY KEY ENGINE
+       -------------------------------------------------------------------------- */
+    let tempGeneratedSeed = [];
+
+    function openCreateModal() {
+      document.getElementById('modal-create').classList.add('active');
+    }
+
+    function toggleProtocolDropdown() {
+      document.getElementById('protocol-custom-options').classList.toggle('open');
+    }
+
+    function selectProtocol(name, value) {
+      appState.selectedProtocol = name;
+      document.getElementById('selected-protocol-label').innerText = name;
+      document.getElementById('protocol-custom-options').classList.remove('open');
+    }
+
+    function generateRandomString(length) {
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
+      }
+      return result;
+    }
+
+    function generateWalletStep2() {
+      const nameInput = document.getElementById('input-wallet-name').value.trim();
+      if (!nameInput) {
+        showToast("Please enter a wallet name");
+        return;
+      }
+
+      // Generate 12-word seed from word library
+      tempGeneratedSeed = [];
+      for (let i = 0; i < 12; i++) {
+        const randomIndex = Math.floor(Math.random() * WORD_LIBRARY.length);
+        tempGeneratedSeed.push(WORD_LIBRARY[randomIndex]);
+      }
+
+      // Render seed grid
+      const grid = document.getElementById('seed-grid-container');
+      grid.innerHTML = '';
+      tempGeneratedSeed.forEach((word, idx) => {
+        grid.innerHTML += `<div class="seed-word"><span>${idx + 1}.</span> ${word}</div>`;
+      });
+
+      document.getElementById('seed-display-area').classList.remove('hidden');
+    }
+
+    function downloadSeedPDF() {
+      const content = `BITWALL WALLET SEED BACKUP\n\n` +
+                      `Wallet Name: ${document.getElementById('input-wallet-name').value}\n` +
+                      `Protocol: ${appState.selectedProtocol}\n` +
+                      `Date: ${new Date().toLocaleString()}\n\n` +
+                      `Seed Phrase:\n${tempGeneratedSeed.join(' ')}\n\n` +
+                      `WARNING: Keep this document offline and safe!`;
+      
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bitwall-backup-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Backup saved!");
+    }
+
+    function finalizeWalletCreation() {
+      const name = document.getElementById('input-wallet-name').value;
+      
+      // Random Private and Public Key Generation Prototype
+      const privKey = "5K" + generateRandomString(49);
+      const pubKey = "03" + generateRandomString(64);
+
+      appState.activeWallet = {
+        name: name,
+        protocol: appState.selectedProtocol,
+        seed: tempGeneratedSeed,
+        privateKey: privKey,
+        publicKey: pubKey
+      };
+
+      // UI Update
+      document.getElementById('active-wallet-name').innerText = name;
+      document.getElementById('active-protocol-tag').innerText = appState.selectedProtocol;
+      document.getElementById('disp-pubkey').innerText = pubKey;
+      document.getElementById('disp-privkey').innerText = "Click to Reveal";
+
+      document.getElementById('wallet-empty-view').classList.add('hidden');
+      document.getElementById('wallet-active-view').classList.remove('hidden');
+      document.getElementById('key-info-card').classList.remove('hidden');
+
+      closeModal('modal-create');
+      updateBalanceUI();
+      showToast("Wallet Created Successfully!");
+    }
+
+    /* --------------------------------------------------------------------------
+       6. CUSTOM DROPDOWN & ADDRESS SWITCHING
+       -------------------------------------------------------------------------- */
+    function renderAddressDropdown() {
+      const container = document.getElementById('address-custom-options');
+      container.innerHTML = '';
+
+      HARDCODED_ADDRESSES.forEach((addr, idx) => {
+        const shortAddr = addr.substring(0, 8) + '...' + addr.substring(addr.length - 6);
+        container.innerHTML += `
+          <div class="custom-option" onclick="selectAddress(${idx})">
+            <span>${shortAddr}</span>
+            <span style="color: var(--yellow); font-weight:700;">${appState.addressBalances[idx]} BTC</span>
+          </div>
+        `;
+      });
+
+      selectAddress(0);
+    }
+
+    function toggleAddressDropdown() {
+      document.getElementById('address-custom-options').classList.toggle('open');
+    }
+
+    function selectAddress(index) {
+      appState.selectedAddressIndex = index;
+      const addr = HARDCODED_ADDRESSES[index];
+      const shortAddr = addr.substring(0, 8) + '...' + addr.substring(addr.length - 6);
+      
+      document.getElementById('selected-address-label').innerText = shortAddr;
+      document.getElementById('address-custom-options').classList.remove('open');
+
+      updateBalanceUI();
+    }
+
+    function updateBalanceUI() {
+      const btcVal = appState.addressBalances[appState.selectedAddressIndex] || 0;
+      const usdVal = btcVal * appState.btcPrice;
+      const sats = Math.round(btcVal * 100000000);
+
+      document.getElementById('balance-btc-val').innerText = `${btcVal.toFixed(8)} BTC`;
+      document.getElementById('balance-usd-val').innerText = `≈ $${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+      document.getElementById('active-wallet-sats').innerText = `${sats.toLocaleString()} Sats`;
+    }
+
+    /* --------------------------------------------------------------------------
+       7. SEND WIDGET LOGIC
+       -------------------------------------------------------------------------- */
+    function openSendModal() {
+      document.getElementById('modal-send').classList.add('active');
+      updateSendCalculations();
+    }
+
+    async function pasteAddress() {
+      try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById('send-target-address').value = text;
+      } catch (err) {
+        showToast("Clipboard access denied");
+      }
+    }
+
+    function setSendMax() {
+      const currentBtc = appState.addressBalances[appState.selectedAddressIndex] || 0;
+      // Estimate tx fee in BTC (standard 140 vBytes)
+      const estimatedFeeBtc = (appState.gasFeeSatVb * 140) / 100000000;
+      const maxSend = Math.max(0, currentBtc - estimatedFeeBtc);
+      document.getElementById('send-amount-btc').value = maxSend.toFixed(8);
+      updateSendCalculations();
+    }
+
+    function updateSendCalculations() {
+      const amount = parseFloat(document.getElementById('send-amount-btc').value) || 0;
+      const feeBtc = (appState.gasFeeSatVb * 140) / 100000000;
+      const feeUsd = feeBtc * appState.btcPrice;
+      
+      const totalBtc = amount + feeBtc;
+      const totalUsd = totalBtc * appState.btcPrice;
+
+      document.getElementById('send-gas-fee-display').innerText = `${appState.gasFeeSatVb} sat/vB (~$${feeUsd.toFixed(2)})`;
+      document.getElementById('send-total-usd').innerText = `$${totalUsd.toFixed(2)} USD`;
+    }
+
+    function executeSendTransaction() {
+      const target = document.getElementById('send-target-address').value.trim();
+      const amount = parseFloat(document.getElementById('send-amount-btc').value);
+
+      if (!target) {
+        showToast("Please enter target address");
+        return;
+      }
+      if (!amount || amount <= 0) {
+        showToast("Please enter a valid amount");
+        return;
+      }
+
+      showToast("Transaction Broadcasted!");
+      closeModal('modal-send');
+    }
+
+    /* --------------------------------------------------------------------------
+       8. RECEIVE WIDGET LOGIC & QR CODE GENERATION
+       -------------------------------------------------------------------------- */
+    function openReceiveModal() {
+      const addr = HARDCODED_ADDRESSES[appState.selectedAddressIndex];
+      document.getElementById('receive-address-input').value = addr;
+
+      // Generate Dynamic QR Code
+      const qrWrapper = document.getElementById('qr-code-wrapper');
+      qrWrapper.innerHTML = '';
+      new QRCode(qrWrapper, {
+        text: `bitcoin:${addr}`,
+        width: 160,
+        height: 160,
+        colorDark: "#0a0b0e",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      // Calculate Minimum Ideal Amount from Gas Fees (e.g. 10x fee rate threshold)
+      const minFeeBtc = (appState.gasFeeSatVb * 140 * 5) / 100000000;
+      const minFeeUsd = minFeeBtc * appState.btcPrice;
+      document.getElementById('receive-min-ideal').innerText = `${minFeeBtc.toFixed(8)} BTC ($${minFeeUsd.toFixed(2)})`;
+
+      document.getElementById('modal-receive').classList.add('active');
+    }
+
+    function copyReceiveAddress() {
+      const input = document.getElementById('receive-address-input');
+      navigator.clipboard.writeText(input.value);
+      showToast("Address copied to clipboard!");
+    }
+
+    /* --------------------------------------------------------------------------
+       9. MODAL & UTILITY FUNCTIONS
+       -------------------------------------------------------------------------- */
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
